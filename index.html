@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F7F7F7">
+<title>Link Cracker</title>
+<style>
+  :root{--blue:#007AFF;--green:#4CD964;--yellow:#FFCC00;--orange:#FF9500;--red:#FF3B30;
+        --bg:#EFEFF4;--cell:#fff;--sep:#C8C7CC;--label:#000;--sub:#8E8E93;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--label);
+    font-family:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;font-size:17px;-webkit-font-smoothing:antialiased}
+  .nav{position:sticky;top:0;z-index:5;padding:env(safe-area-inset-top) 0 0;
+    background:rgba(247,247,247,.94);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:.5px solid var(--sep)}
+  .nav .bar{position:relative;height:44px;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .moreBtn{position:absolute;right:4px;top:0;width:52px;height:44px;border:0;background:none;display:flex;align-items:center;justify-content:center}
+  .moreBtn:active{opacity:.4}
+  .wrap{max-width:560px;margin:0 auto;padding-bottom:40px}
+  h1{font-size:34px;font-weight:700;letter-spacing:.37px;margin:8px 16px 14px}
+  .seg{display:flex;margin:0 16px 8px;border:1px solid var(--blue);border-radius:8px;overflow:hidden}
+  .seg button{flex:1;padding:6px 0;border:0;background:transparent;color:var(--blue);font:inherit;font-size:13px;font-weight:500}
+  .seg button+button{border-left:1px solid var(--blue)}
+  .seg button.on{background:var(--blue);color:#fff}
+  .hdr{margin:24px 16px 7px;font-size:13px;color:var(--sub);text-transform:uppercase;letter-spacing:-.08px}
+  .group{background:var(--cell);border-top:.5px solid var(--sep);border-bottom:.5px solid var(--sep)}
+  .cell{display:flex;align-items:center;min-height:44px;padding:0 16px;gap:12px}
+  .cell+.cell{position:relative}
+  .cell+.cell::before{content:"";position:absolute;left:16px;right:0;top:0;border-top:.5px solid var(--sep)}
+  input[type=url]{flex:1;border:0;outline:0;font:inherit;padding:11px 0;background:transparent;min-width:0}
+  input::placeholder{color:#C7C7CC}
+  .link{color:var(--blue);font:inherit;background:none;border:0;padding:11px 0;width:100%;text-align:center}
+  .link:active{background:#D9D9D9}
+  .link.danger{color:var(--red)}
+  .primary{display:block;width:calc(100% - 32px);margin:16px;padding:13px;border:0;border-radius:10px;background:var(--blue);color:#fff;font:inherit;font-weight:600}
+  .primary:active{opacity:.6}
+  #viewfinder{display:none;position:relative;background:#000;aspect-ratio:1/1;overflow:hidden}
+  #viewfinder video{width:100%;height:100%;object-fit:cover}
+  #viewfinder i{position:absolute;inset:18%;border:3px solid rgba(255,255,255,.9);border-radius:18px}
+  .note{margin:8px 16px 0;font-size:13px;color:var(--sub);line-height:1.35}
+  #result{display:none}
+  .gauge{background:var(--cell);border-top:.5px solid var(--sep);border-bottom:.5px solid var(--sep);padding:18px 16px 14px;text-align:center}
+  .gauge svg{width:100%;max-width:320px;overflow:visible}
+  .needle{transform-origin:100px 100px;transform:rotate(-90deg);transition:transform 1.1s cubic-bezier(.2,.9,.25,1.15)}
+  #pct,.pctn{font-size:44px;font-weight:700;letter-spacing:.3px;margin-top:-6px}
+  #verdict,.vdn{font-size:22px;font-weight:600;margin-top:2px}
+  #host,.hostn{font-size:13px;color:var(--sub);margin-top:4px;word-break:break-all}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .rtext{padding:11px 0;font-size:16px;line-height:1.3}
+  .err{color:var(--red)}
+
+  /* ---- Logo intro ---- */
+  #intro{position:fixed;inset:0;z-index:100;background:#fff;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;animation:ovOut .6s ease 4.6s forwards}
+  #intro.skip{animation:none;opacity:0;transition:opacity .3s ease;pointer-events:none}
+  @keyframes ovOut{to{opacity:0;visibility:hidden}}
+
+  .logoMove{width:96px;height:96px;will-change:transform;animation:settle .95s cubic-bezier(.22,1,.36,1) 2.3s both}
+  @keyframes settle{to{transform:translateY(-14px) scale(1.2)}}
+  .logoPop{width:96px;height:96px;will-change:transform,opacity;animation:pop .85s cubic-bezier(.22,1,.36,1) both}
+  @keyframes pop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+  .logoPop svg{width:96px;height:96px;display:block;overflow:visible;filter:drop-shadow(0 8px 16px rgba(0,122,255,.32))}
+
+  .draw{stroke-dasharray:1;stroke-dashoffset:1;opacity:0;animation:draw .8s cubic-bezier(.4,0,.2,1) both}
+  @keyframes draw{0%{stroke-dashoffset:1;opacity:0}2%{opacity:1}100%{stroke-dashoffset:0;opacity:1}}
+  .pa{animation:pa 3.2s both}
+  .pb{animation:pb 3.2s both}
+  @keyframes pa{
+    0%,22%{transform:translateX(-8px);animation-timing-function:cubic-bezier(.65,0,.35,1)}
+    45%,58%{transform:translateX(0);animation-timing-function:cubic-bezier(.2,.9,.3,1.3)}
+    66%,100%{transform:translateX(-4px)}}
+  @keyframes pb{
+    0%,22%{transform:translateX(8px);animation-timing-function:cubic-bezier(.65,0,.35,1)}
+    45%,58%{transform:translateX(0);animation-timing-function:cubic-bezier(.2,.9,.3,1.3)}
+    66%,100%{transform:translateX(4px)}}
+  .bolt{stroke-dasharray:1;stroke-dashoffset:1;opacity:0;animation:draw .3s cubic-bezier(.3,0,.2,1) 1.85s both}
+  .flash{transform-box:view-box;transform-origin:50px 50px;opacity:0;animation:flash .6s ease-out 1.85s both}
+  @keyframes flash{0%{opacity:.85;transform:scale(.2)}100%{opacity:0;transform:scale(2.2)}}
+
+  .word{margin-top:6px;text-align:center;opacity:0;animation:rise .8s cubic-bezier(.22,1,.36,1) 2.5s both}
+  .word b{display:block;font-size:30px;font-weight:700;letter-spacing:.2px;color:#1C1C1E}
+  .word span{display:block;margin-top:4px;font-size:15px;color:var(--sub);opacity:0;animation:rise .8s cubic-bezier(.22,1,.36,1) 2.8s both}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ---- iOS push pages (History, Details, About) ---- */
+  #main{transition:transform .38s cubic-bezier(.36,.66,.04,1)}
+  #main.under{transform:translateX(-30%)}
+  .page{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
+    transform:translateX(100%);visibility:hidden;box-shadow:-4px 0 14px rgba(0,0,0,.14);
+    transition:transform .38s cubic-bezier(.36,.66,.04,1),visibility 0s .38s}
+  .page.show{transform:none;visibility:visible;transition:transform .38s cubic-bezier(.36,.66,.04,1),visibility 0s 0s}
+  .page.show.under{transform:translateX(-30%)}
+  .pnav{flex:none;position:relative;display:flex;align-items:center;justify-content:space-between;
+    height:calc(44px + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);
+    background:rgba(247,247,247,.94);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:.5px solid transparent;transition:border-color .2s}
+  .pnav.scrolled,.pnav.always{border-bottom-color:var(--sep)}
+  .ptitle{position:absolute;left:0;right:0;bottom:0;height:44px;line-height:44px;text-align:center;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+  .pnav.scrolled .ptitle,.pnav.always .ptitle{opacity:1}
+  .back{position:relative;z-index:1;display:flex;align-items:center;gap:6px;height:44px;padding:0 10px 0 8px;border:0;background:none;color:var(--blue);font:inherit}
+  .back:active{opacity:.4}
+  .pact{position:relative;z-index:1;height:44px;min-width:64px;padding:0 16px;border:0;background:none;color:var(--blue);font:inherit;text-align:right}
+  .pact:active{opacity:.4}
+  .pbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+  .pin{max-width:560px;margin:0 auto}
+
+  .hrow{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px 10px 16px;min-height:60px;background:none;border:0;font:inherit;text-align:left;color:inherit}
+  .hrow+.hrow::before{content:"";position:absolute;left:58px;right:0;top:0;border-top:.5px solid var(--sep)}
+  .hrow:active{background:#D9D9D9}
+  .ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none}
+  .ico svg{width:18px;height:18px}
+  .ico.lk{background:#007AFF}.ico.qr{background:#5856D6}
+  .hmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .hurl{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hmeta{font-size:13px;color:var(--sub)}
+  .hrisk{flex:none;display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+  .hrisk b{font-size:17px}
+  .hrisk small{font-size:11px;font-weight:600}
+  .empty{text-align:center;padding:90px 30px;color:var(--sub)}
+  .empty .et{font-size:22px;font-weight:600;color:#6d6d72;margin-bottom:6px}
+  .empty .es{font-size:15px;line-height:1.35}
+
+  .kv{justify-content:space-between;gap:16px}
+  .kv .k{flex:none}
+  .kv .v{color:var(--sub);text-align:right;word-break:break-word}
+  .urlfull{padding:12px 0;font-size:15px;line-height:1.35;word-break:break-all;-webkit-user-select:text;user-select:text}
+
+  .aboutHead{text-align:center;padding:6px 16px 4px}
+  .aboutHead svg{width:88px;height:88px;filter:drop-shadow(0 6px 14px rgba(0,122,255,.3))}
+  .aboutHead .an{font-size:24px;font-weight:700;margin-top:12px}
+  .aboutHead .avr{font-size:15px;color:var(--sub);margin-top:2px}
+  .dev{min-height:62px;padding-top:8px;padding-bottom:8px}
+  .avt{width:40px;height:40px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;flex:none}
+  .dt{display:flex;flex-direction:column}
+  .dt b{font-weight:600;font-size:17px}
+  .dt small{font-size:14px;color:var(--sub);margin-top:1px}
+
+  /* ---- iOS action sheet ---- */
+  .sheetWrap{position:fixed;inset:0;z-index:90;visibility:hidden;transition:visibility 0s .35s}
+  .sheetWrap.open{visibility:visible;transition-delay:0s}
+  .dim{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:opacity .3s ease}
+  .sheetWrap.open .dim{opacity:1}
+  .sheet{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 8px);width:calc(100% - 16px);max-width:520px;
+    transform:translate(-50%,calc(100% + 24px));transition:transform .35s cubic-bezier(.2,.9,.25,1)}
+  .sheetWrap.open .sheet{transform:translate(-50%,0)}
+  .sgroup{background:rgba(250,250,250,.94);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-radius:14px;overflow:hidden;margin-bottom:8px}
+  .sgroup.cancel{background:#fff}
+  .stitle{padding:14px 16px;text-align:center;font-size:13px;font-weight:600;color:var(--sub);border-bottom:.5px solid rgba(60,60,67,.25)}
+  .sbtn{display:block;width:100%;height:57px;border:0;background:transparent;font:inherit;font-size:20px;color:var(--blue)}
+  .sbtn+.sbtn{border-top:.5px solid rgba(60,60,67,.25)}
+  .sbtn:active{background:rgba(0,0,0,.08)}
+  .sbtn.danger{color:var(--red)}
+  .cancel .sbtn{font-weight:600}
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <div class="logoMove">
+    <div class="logoPop">
+      <svg viewBox="0 0 100 100" aria-label="Link Cracker logo">
+        <defs>
+          <linearGradient id="gIcon" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#5AC8FA"/><stop offset="1" stop-color="#007AFF"/>
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" rx="22.4" fill="url(#gIcon)"/>
+        <g transform="translate(41 59) rotate(-45)"><g class="pa">
+          <path class="draw" pathLength="1" style="animation-delay:.25s" d="M-10 -10H10A10 10 0 0 1 10 10H-10A10 10 0 0 1 -10 -10Z" fill="none" stroke="#fff" stroke-width="6.5" stroke-linejoin="round"/>
+        </g></g>
+        <g transform="translate(59 41) rotate(-45)"><g class="pb">
+          <path class="draw" pathLength="1" style="animation-delay:.45s" d="M-10 -10H10A10 10 0 0 1 10 10H-10A10 10 0 0 1 -10 -10Z" fill="none" stroke="#fff" stroke-width="6.5" stroke-linejoin="round"/>
+        </g></g>
+        <circle class="flash" cx="50" cy="50" r="22" fill="#fff"/>
+        <path class="bolt" pathLength="1" d="M40 27L51 46L44 49L60 73" fill="none" stroke="#FFCC00" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".3"/>
+        <path class="bolt" pathLength="1" d="M40 27L51 46L44 49L60 73" fill="none" stroke="#FFCC00" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+  <div class="word"><b>Link Cracker</b><span>Check before you tap</span></div>
+</div>
+
+<div id="main">
+  <div class="nav"><div class="bar">Link Cracker
+    <button class="moreBtn" id="moreBtn" aria-label="More">
+      <svg width="22" height="6" viewBox="0 0 22 6"><circle cx="3" cy="3" r="2.6" fill="#007AFF"/><circle cx="11" cy="3" r="2.6" fill="#007AFF"/><circle cx="19" cy="3" r="2.6" fill="#007AFF"/></svg>
+    </button>
+  </div></div>
+  <div class="wrap">
+    <h1>Link Cracker</h1>
+    <div class="seg" role="tablist">
+      <button id="tLink" class="on">Link</button><button id="tQr">QR Code</button>
+    </div>
+
+    <section id="pLink">
+      <div class="hdr">Website link</div>
+      <div class="group"><div class="cell"><input id="url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" placeholder="Paste a link"></div></div>
+      <button class="primary" id="goLink">Check Link</button>
+    </section>
+
+    <section id="pQr" style="display:none">
+      <div class="hdr">Scan before you open</div>
+      <div class="group">
+        <div id="viewfinder"><video id="vid" playsinline muted></video><i></i></div>
+        <div class="cell"><button class="link" id="camBtn">Scan with Camera</button></div>
+        <div class="cell"><button class="link" id="picBtn">Choose Photo of QR Code</button></div>
+      </div>
+      <input id="file" type="file" accept="image/*" hidden>
+      <div class="note">Camera needs https or localhost. On a phone using a local address, use Choose Photo instead.</div>
+    </section>
+
+    <section id="result">
+      <div class="hdr">Riskometer</div>
+      <div class="gauge">
+        <svg viewBox="0 0 200 118" aria-label="Risk gauge">
+          <path d="M20 100 A80 80 0 0 1 60 30.7" fill="none" stroke="#4CD964" stroke-width="16"/>
+          <path d="M60 30.7 A80 80 0 0 1 140 30.7" fill="none" stroke="#FFCC00" stroke-width="16"/>
+          <path d="M140 30.7 A80 80 0 0 1 180 100" fill="none" stroke="#FF3B30" stroke-width="16"/>
+          <g class="needle" id="needle"><line x1="100" y1="100" x2="100" y2="34" stroke="#1C1C1E" stroke-width="3" stroke-linecap="round"/></g>
+          <circle cx="100" cy="100" r="8" fill="#1C1C1E"/><circle cx="100" cy="100" r="3" fill="#fff"/>
+          <text x="20" y="116" font-size="9" fill="#8E8E93" text-anchor="middle">Low</text>
+          <text x="180" y="116" font-size="9" fill="#8E8E93" text-anchor="middle">High</text>
+        </svg>
+        <div id="pct">0%</div><div id="verdict"></div><div id="host"></div>
+      </div>
+      <div class="hdr">Why</div>
+      <div class="group" id="why"></div>
+    </section>
+  </div>
+</div>
+
+<!-- History page -->
+<div class="page" id="pgHist">
+  <div class="pnav">
+    <button class="back" data-back><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Back</span></button>
+    <div class="ptitle">History</div>
+    <button class="pact" id="clearHist">Clear</button>
+  </div>
+  <div class="pbody"><div class="pin"><h1>History</h1><div id="hList"></div></div></div>
+</div>
+
+<!-- Details page -->
+<div class="page" id="pgDetail">
+  <div class="pnav always">
+    <button class="back" data-back><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>History</span></button>
+    <div class="ptitle">Details</div>
+    <span class="pact"></span>
+  </div>
+  <div class="pbody"><div class="pin" id="dBody"></div></div>
+</div>
+
+<!-- About page -->
+<div class="page" id="pgAbout">
+  <div class="pnav">
+    <button class="back" data-back><svg width="12" height="20" viewBox="0 0 12 20"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Back</span></button>
+    <div class="ptitle">About</div>
+    <span class="pact"></span>
+  </div>
+  <div class="pbody"><div class="pin">
+    <h1>About</h1>
+    <div class="aboutHead">
+      <svg viewBox="0 0 100 100" aria-label="Link Cracker logo">
+        <defs><linearGradient id="gIcon2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5AC8FA"/><stop offset="1" stop-color="#007AFF"/></linearGradient></defs>
+        <rect width="100" height="100" rx="22.4" fill="url(#gIcon2)"/>
+        <g transform="translate(41 59) rotate(-45) translate(-4 0)"><path d="M-10 -10H10A10 10 0 0 1 10 10H-10A10 10 0 0 1 -10 -10Z" fill="none" stroke="#fff" stroke-width="6.5" stroke-linejoin="round"/></g>
+        <g transform="translate(59 41) rotate(-45) translate(4 0)"><path d="M-10 -10H10A10 10 0 0 1 10 10H-10A10 10 0 0 1 -10 -10Z" fill="none" stroke="#fff" stroke-width="6.5" stroke-linejoin="round"/></g>
+        <path d="M40 27L51 46L44 49L60 73" fill="none" stroke="#FFCC00" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity=".3"/>
+        <path d="M40 27L51 46L44 49L60 73" fill="none" stroke="#FFCC00" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="an">Link Cracker</div>
+      <div class="avr">Version 1.0 Beta</div>
+    </div>
+    <div class="hdr">App</div>
+    <div class="group">
+      <div class="cell kv"><span class="k">Version</span><span class="v">1.0 Beta</span></div>
+      <div class="cell kv"><span class="k">Team size</span><span class="v">2 members</span></div>
+    </div>
+    <div class="hdr">Developers</div>
+    <div class="group">
+      <div class="cell dev"><span class="avt" style="background:#007AFF">U</span><span class="dt"><b>Umesh Kumar</b><small>Head Engineer</smalL></smal></small></span></div>
+      <div class="cell dev"><span class="avt" style="background:#5856D6">T</span><span class="dt"><b>Tohid</b><small>Machine Learning Engineer</small></span></div>
+    </div>
+    <div class="note">Link Cracker looks for common phishing signs in links and QR codes. The result is an estimate, so stay careful with links you do not know.</div>
+  </div></div>
+</div>
+
+<!-- iOS action sheet -->
+<div class="sheetWrap" id="sheetWrap">
+  <div class="dim" id="dim"></div>
+  <div class="sheet">
+    <div class="sgroup" id="sGroup"></div>
+    <div class="sgroup cancel"><button class="sbtn" id="sCancel">Cancel</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+const COLORS = {safe:"#4CD964", suspicious:"#FF9500", phishing:"#FF3B30"};
+const TXT = {safe:"#30B650", suspicious:"#FF9500", phishing:"#FF3B30"};
+const LABELS = {safe:"Looks Safe", suspicious:"Be Careful", phishing:"Likely Phishing"};
+const SHORT = {safe:"Safe", suspicious:"Careful", phishing:"Phishing"};
+const DOT = {good:"#4CD964", warn:"#FFCC00", bad:"#FF3B30"};
+let stream = null, scanning = false;
+
+/* ---- Logo intro: remove after it finishes, tap to skip ---- */
+(function(){
+  const intro = $("intro");
+  const remove = () => intro && intro.remove();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches){ remove(); return; }
+  const timer = setTimeout(remove, 5300);
+  intro.addEventListener("click", () => { clearTimeout(timer); intro.classList.add("skip"); setTimeout(remove, 350); });
+})();
+
+function tab(which){
+  $("tLink").classList.toggle("on", which==="link"); $("tQr").classList.toggle("on", which==="qr");
+  $("pLink").style.display = which==="link" ? "" : "none"; $("pQr").style.display = which==="qr" ? "" : "none";
+  if (which==="link") stopCam();
+}
+$("tLink").onclick = () => tab("link"); $("tQr").onclick = () => tab("qr");
+
+function showError(msg){
+  $("result").style.display = "block";
+  $("needle").style.transform = "rotate(-90deg)";
+  $("pct").textContent = "--"; $("verdict").textContent = "Couldn't check"; $("verdict").style.color = "var(--red)";
+  $("host").textContent = "";
+  $("why").innerHTML = '<div class="cell"><div class="rtext err"></div></div>';
+  $("why").querySelector(".rtext").textContent = msg;
+}
+
+/* ---- History storage ---- */
+const KEY = "lc_history_v1";
+let hist = [];
+try { hist = JSON.parse(localStorage.getItem(KEY) || "[]"); if (!Array.isArray(hist)) hist = []; } catch(e){ hist = []; }
+const saveHist = () => { try { localStorage.setItem(KEY, JSON.stringify(hist)); } catch(e){} };
+function addHistory(e){ hist.unshift(e); if (hist.length > 200) hist.length = 200; saveHist(); }
+
+/* ---- Check ---- */
+async function check(text, src){
+  try{
+    const r = await fetch("/check", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({url:text})});
+    const d = await r.json();
+    if (!r.ok) return showError(d.error || "Something went wrong");
+    $("result").style.display = "block";
+    $("verdict").textContent = LABELS[d.verdict]; $("verdict").style.color = COLORS[d.verdict];
+    $("host").textContent = d.url;
+    $("why").innerHTML = "";
+    d.reasons.forEach(x => $("why").appendChild(reasonCell(x)));
+    sweep($("needle"), $("pct"), d.risk);
+    $("result").scrollIntoView({behavior:"smooth", block:"start"});
+    addHistory({id: Date.now() + "" + Math.floor(Math.random()*1000), ts: Date.now(), src: src || "link",
+                url: d.url, risk: d.risk, verdict: d.verdict, reasons: d.reasons});
+    if (src === "link"){ $("url").value = ""; $("url").blur(); }
+  }catch(e){ showError("Can't reach the Link Cracker server. Start it with: python app.py"); }
+}
+
+function reasonCell(x){
+  const c = el("div", "cell");
+  const dot = el("span", "dot"); dot.style.background = DOT[x.level];
+  c.appendChild(dot); c.appendChild(el("div", "rtext", x.text));
+  return c;
+}
+
+function sweep(needle, pctEl, risk){
+  needle.style.transform = "rotate(-90deg)";
+  requestAnimationFrame(() => requestAnimationFrame(() => { needle.style.transform = `rotate(${risk*1.8-90}deg)`; }));
+  const t0 = performance.now();
+  (function tick(t){ const k = Math.min((t-t0)/1100,1); pctEl.textContent = Math.round(risk*k)+"%"; if(k<1) requestAnimationFrame(tick); })(t0);
+}
+
+$("goLink").onclick = () => { const v = $("url").value.trim(); if (v) check(v, "link"); };
+$("url").addEventListener("keydown", e => { if (e.key==="Enter") $("goLink").click(); });
+
+/* ---- QR ---- */
+function decodeCanvas(cv){
+  const ctx = cv.getContext("2d"), img = ctx.getImageData(0,0,cv.width,cv.height);
+  const q = window.jsQR && jsQR(img.data, img.width, img.height, {inversionAttempts:"attemptBoth"});
+  return q ? q.data : null;
+}
+async function startCam(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    $("vid").srcObject = stream; await $("vid").play();
+    $("viewfinder").style.display = "block"; $("camBtn").textContent = "Stop Scanning"; scanning = true; loop();
+  }catch(e){ showError("Camera unavailable. Use Choose Photo instead."); }
+}
+function stopCam(){
+  scanning = false; if (stream) stream.getTracks().forEach(t => t.stop()); stream = null;
+  $("viewfinder").style.display = "none"; $("camBtn").textContent = "Scan with Camera";
+}
+function loop(){
+  if (!scanning) return;
+  const v = $("vid");
+  if (v.videoWidth){
+    const cv = document.createElement("canvas"); cv.width = v.videoWidth; cv.height = v.videoHeight;
+    cv.getContext("2d").drawImage(v,0,0); const data = decodeCanvas(cv);
+    if (data){ stopCam(); check(data, "qr"); return; }
+  }
+  requestAnimationFrame(loop);
+}
+$("camBtn").onclick = () => scanning ? stopCam() : startCam();
+$("picBtn").onclick = () => $("file").click();
+$("file").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const s = Math.min(1, 1200/Math.max(img.width,img.height));
+    const cv = document.createElement("canvas"); cv.width = img.width*s; cv.height = img.height*s;
+    cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+    const data = decodeCanvas(cv);
+    data ? check(data, "qr") : showError("No QR code found in that photo. Try a clearer, closer shot.");
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(f); e.target.value = "";
+};
+
+/* ---- iOS push navigation ---- */
+const stack = [];
+function push(pg){
+  const under = stack.length ? stack[stack.length-1] : $("main");
+  pg.style.zIndex = 50 + stack.length;
+  pg.querySelector(".pbody").scrollTop = 0;
+  pg.querySelector(".pnav").classList.remove("scrolled");
+  under.classList.add("under"); pg.classList.add("show"); stack.push(pg);
+  document.documentElement.style.overflow = "hidden";
+}
+function pop(){
+  const pg = stack.pop(); if (!pg) return;
+  pg.classList.remove("show");
+  const under = stack.length ? stack[stack.length-1] : $("main");
+  under.classList.remove("under");
+  if (!stack.length) document.documentElement.style.overflow = "";
+}
+document.querySelectorAll("[data-back]").forEach(b => b.onclick = pop);
+document.querySelectorAll(".pbody").forEach(b =>
+  b.addEventListener("scroll", () => b.previousElementSibling.classList.toggle("scrolled", b.scrollTop > 38)));
+
+/* ---- iOS action sheet ---- */
+function showSheet(items, title){
+  const g = $("sGroup"); g.innerHTML = "";
+  if (title) g.appendChild(el("div", "stitle", title));
+  items.forEach(it => {
+    const b = el("button", "sbtn" + (it.danger ? " danger" : ""), it.label);
+    b.onclick = () => { hideSheet(); setTimeout(it.fn, 60); };
+    g.appendChild(b);
+  });
+  $("sheetWrap").classList.add("open");
+}
+function hideSheet(){ $("sheetWrap").classList.remove("open"); }
+$("dim").onclick = hideSheet; $("sCancel").onclick = hideSheet;
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape"){ if ($("sheetWrap").classList.contains("open")) hideSheet(); else if (stack.length) pop(); }
+});
+
+$("moreBtn").onclick = () => showSheet([
+  {label:"History", fn:() => { renderHistory(); push($("pgHist")); }},
+  {label:"About",   fn:() => push($("pgAbout"))}
+]);
+$("clearHist").onclick = () => showSheet(
+  [{label:"Clear All History", danger:true, fn:() => { hist = []; saveHist(); renderHistory(); }}],
+  "This removes all checked links and QR codes from this device.");
+
+/* ---- History list ---- */
+const LINK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
+const QR_SVG = '<svg viewBox="0 0 24 24" fill="#fff"><path fill-rule="evenodd" d="M3 3h8v8H3zM5 5v4h4V5zM13 3h8v8h-8zM15 5v4h4V5zM3 13h8v8H3zM5 15v4h4v-4zM13 13h3v3h-3zM18 13h3v3h-3zM13 18h3v3h-3zM18 18h3v3h-3z"/></svg>';
+const CHEV_SVG = '<svg width="8" height="14" viewBox="0 0 8 14"><path d="M1 1l6 6-6 6" fill="none" stroke="#C7C7CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const timeStr = ts => new Date(ts).toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
+function dayLabel(ts){
+  const d = new Date(ts), n = new Date(), y = new Date(n); y.setDate(n.getDate() - 1);
+  if (d.toDateString() === n.toDateString()) return "Today";
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString(undefined, {weekday:"long", day:"numeric", month:"short", year:"numeric"});
+}
+
+function renderHistory(){
+  const box = $("hList"); box.innerHTML = "";
+  $("clearHist").style.visibility = hist.length ? "visible" : "hidden";
+  if (!hist.length){
+    const e = el("div", "empty"); e.appendChild(el("div", "et", "No History Yet"));
+    e.appendChild(el("div", "es", "Links and QR codes you check will show up here.")); box.appendChild(e); return;
+  }
+  let last = "", grp = null;
+  hist.forEach(h => {
+    const lab = dayLabel(h.ts);
+    if (lab !== last){ last = lab; box.appendChild(el("div", "hdr", lab)); grp = el("div", "group"); box.appendChild(grp); }
+    const row = el("button", "hrow");
+    const ico = el("span", "ico " + (h.src === "qr" ? "qr" : "lk")); ico.innerHTML = h.src === "qr" ? QR_SVG : LINK_SVG;
+    const main = el("span", "hmain");
+    main.appendChild(el("span", "hurl", h.url.replace(/^https?:\/\//i, "")));
+    main.appendChild(el("span", "hmeta", timeStr(h.ts) + " · " + (h.src === "qr" ? "QR Code" : "Link")));
+    const rk = el("span", "hrisk");
+    const n = el("b", null, h.risk + "%"); n.style.color = TXT[h.verdict];
+    const s = el("small", null, SHORT[h.verdict]); s.style.color = TXT[h.verdict];
+    rk.appendChild(n); rk.appendChild(s);
+    row.appendChild(ico); row.appendChild(main); row.appendChild(rk);
+    row.insertAdjacentHTML("beforeend", CHEV_SVG);
+    row.onclick = () => openDetail(h.id);
+    grp.appendChild(row);
+  });
+}
+
+/* ---- History detail ---- */
+const gaugeSVG = nid => `<svg viewBox="0 0 200 118" aria-label="Risk gauge">
+  <path d="M20 100 A80 80 0 0 1 60 30.7" fill="none" stroke="#4CD964" stroke-width="16"/>
+  <path d="M60 30.7 A80 80 0 0 1 140 30.7" fill="none" stroke="#FFCC00" stroke-width="16"/>
+  <path d="M140 30.7 A80 80 0 0 1 180 100" fill="none" stroke="#FF3B30" stroke-width="16"/>
+  <g class="needle" id="${nid}"><line x1="100" y1="100" x2="100" y2="34" stroke="#1C1C1E" stroke-width="3" stroke-linecap="round"/></g>
+  <circle cx="100" cy="100" r="8" fill="#1C1C1E"/><circle cx="100" cy="100" r="3" fill="#fff"/>
+  <text x="20" y="116" font-size="9" fill="#8E8E93" text-anchor="middle">Low</text>
+  <text x="180" y="116" font-size="9" fill="#8E8E93" text-anchor="middle">High</text></svg>`;
+
+function kvRow(k, v){ const c = el("div", "cell kv"); c.appendChild(el("span", "k", k)); c.appendChild(el("span", "v", v)); return c; }
+
+function openDetail(id){
+  const h = hist.find(x => x.id === id); if (!h) return;
+  const b = $("dBody"); b.innerHTML = "";
+
+  b.appendChild(el("div", "hdr", "Riskometer"));
+  const g = el("div", "gauge"); g.innerHTML = gaugeSVG("dNeedle");
+  const pct = el("div", "pctn", "0%"); pct.id = "dPct"; g.appendChild(pct);
+  const vd = el("div", "vdn", LABELS[h.verdict]); vd.style.color = COLORS[h.verdict]; g.appendChild(vd);
+  b.appendChild(g);
+
+  b.appendChild(el("div", "hdr", "Scan info"));
+  const info = el("div", "group"); const d = new Date(h.ts);
+  const warns = (h.reasons || []).filter(r => r.level !== "good").length;
+  info.appendChild(kvRow("Date", d.toLocaleDateString(undefined, {weekday:"long", day:"numeric", month:"long", year:"numeric"})));
+  info.appendChild(kvRow("Time", d.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit", second:"2-digit"})));
+  info.appendChild(kvRow("Checked via", h.src === "qr" ? "QR Code scan" : "Link"));
+  info.appendChild(kvRow("Risk score", h.risk + " out of 100"));
+  info.appendChild(kvRow("Verdict", LABELS[h.verdict]));
+  info.appendChild(kvRow("Warning signs", String(warns)));
+  b.appendChild(info);
+
+  b.appendChild(el("div", "hdr", h.src === "qr" ? "Link found in QR code" : "Link"));
+  const lg = el("div", "group"); const lc = el("div", "cell"); lc.appendChild(el("div", "urlfull", h.url)); lg.appendChild(lc);
+  const cc = el("div", "cell"); const cp = el("button", "link", "Copy Link"); cc.appendChild(cp); lg.appendChild(cc);
+  cp.onclick = async () => {
+    try { await navigator.clipboard.writeText(h.url); cp.textContent = "Copied"; }
+    catch(e){ cp.textContent = "Copy not supported here"; }
+    setTimeout(() => cp.textContent = "Copy Link", 1500);
+  };
+  b.appendChild(lg);
+
+  b.appendChild(el("div", "hdr", "Why"));
+  const wg = el("div", "group"); (h.reasons || []).forEach(x => wg.appendChild(reasonCell(x))); b.appendChild(wg);
+
+  const dg = el("div", "group"); dg.style.marginTop = "24px";
+  const dc = el("div", "cell"); const del = el("button", "link danger", "Delete from History"); dc.appendChild(del); dg.appendChild(dc);
+  del.onclick = () => { hist = hist.filter(x => x.id !== id); saveHist(); renderHistory(); pop(); };
+  b.appendChild(dg);
+
+  push($("pgDetail"));
+  setTimeout(() => sweep($("dNeedle"), $("dPct"), h.risk), 250);
+}
+</script>
+</body>
+</html>
